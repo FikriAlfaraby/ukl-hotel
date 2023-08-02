@@ -16,6 +16,7 @@ const auth = require(`../auth/auth`);
 
 app.get("/", auth.authVerify, roomController.getAllRoom);
 app.post("/getAvailable", roomController.availableRoom);
+app.post("/getAvailableByTipe", roomController.availableRoomByTipe);
 app.get("/:id", auth.authVerify, roomController.findRoom);
 app.post("/", auth.authVerify, roomController.addRoom);
 app.delete("/:id", auth.authVerify, roomController.deleteRoom);

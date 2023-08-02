@@ -25,7 +25,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 //mendaptkan semua data dalam tabel
 exports.getAllRoom = async (request, response) => {
   const result = await sequelize.query(
-    "SELECT kamars.id,kamars.nomor_kamar,tipe_kamars.nama_tipe_kamar, tipe_kamars.harga FROM kamars JOIN tipe_kamars ON tipe_kamars.id = kamars.id_tipe_kamar ORDER BY kamars.id ASC"
+    "SELECT kamars.id,kamars.nomor_kamar,tipe_kamars.nama_tipe_kamar, tipe_kamars.harga FROM kamars JOIN tipe_kamars ON tipe_kamars.id = kamars.id_tipe_kamar ORDER BY kamars.nomor_kamar ASC"
   );
 
   return response.json({
@@ -183,13 +183,50 @@ exports.availableRoom = async (req, response) => {
     await sequelize.query(`SELECT kamar.id, kamar.nomor_kamar, tipe.nama_tipe_kamar, tipe.harga, tipe.deskripsi, tipe.foto
 FROM kamars AS kamar JOIN tipe_kamars as tipe ON kamar.id_tipe_kamar = tipe.id
 WHERE kamar.id NOT IN (
-  SELECT id_kamar FROM detail_pemesanans WHERE tgl_akses >= "${check_in}" AND tgl_akses <= "${check_out}"
+  SELECT id_kamar FROM detail_pemesanans as dp join pemesanans as p ON p.id = dp.id_pemesanan WHERE tgl_akses >= "${check_in}" AND tgl_akses <= "${check_out}" AND p.status_pemesanan != 'checkout'
 )`);
 
   if (availableRooms[0].length == 0) {
     return response.json({
       success: false,
       message: "Tidak Ada Kamar yang tersedia",
+    });
+  }
+
+  return response.json({
+    message: `Kamar Available For ${check_in} - ${check_out}`,
+    succes: true,
+    data: availableRooms[0],
+  });
+};
+
+exports.availableRoomByTipe = async (request, response) => {
+  const check_in = request.body.check_in;
+  const check_out = request.body.check_out;
+  const nama_tipe_kamar = request.body.nama_tipe_kamar;
+
+  let tgl1 = new Date(check_in);
+  let tgl2 = new Date(check_out);
+
+  if (tgl2 < tgl1) {
+    return response.json({
+      success: false,
+      message: "Tanggal CheckIn atau CheckOut tidak valid",
+    });
+  }
+
+  // ambil tanggal check-in dari request body
+  const availableRooms =
+    await sequelize.query(`SELECT kamar.id, kamar.nomor_kamar, tipe.nama_tipe_kamar, tipe.harga, tipe.deskripsi, tipe.foto
+FROM kamars AS kamar JOIN tipe_kamars as tipe ON kamar.id_tipe_kamar = tipe.id
+WHERE kamar.id NOT IN (
+  SELECT id_kamar FROM detail_pemesanans WHERE tgl_akses >= "${check_in}" AND tgl_akses <= "${check_out}"
+) AND tipe.nama_tipe_kamar = "${nama_tipe_kamar}"`);
+
+  if (availableRooms[0].length == 0) {
+    return response.json({
+      success: false,
+      message: "Tidak Ada Nomor Kamar yang tersedia",
     });
   }
 

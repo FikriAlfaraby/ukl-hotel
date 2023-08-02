@@ -49,7 +49,7 @@ exports.login = async (request, response) => {
       secure: process.env.NODE_ENV === "production",
       path: "/",
       sameSite: "strict",
-      maxAge: 60 * 60 * 24 * 7, // 7 hari
+      maxAge: 60 * 60 * 24 * 1, // 7 hari
     });
 
     response.setHeader("Set-Cookie", cookie);

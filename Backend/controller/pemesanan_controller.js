@@ -19,7 +19,6 @@ exports.addPemesanan = async (request, response) => {
   const {
     nama_user,
     nomor_kamar,
-    jumlah_kamar,
     nama_pemesanan,
     check_in,
     check_out,
@@ -39,18 +38,10 @@ exports.addPemesanan = async (request, response) => {
     });
   }
 
-  let nomor_kamar_arr = nomor_kamar.split("-");
+  let nomor_kamar_arr = nomor_kamar.split(",");
+  let jumlah_kamar = nomor_kamar_arr.length;
 
   let kamar_arr = [];
-
-  console.log(nomor_kamar_arr);
-
-  if (nomor_kamar_arr.length != jumlah_kamar) {
-    return response.json({
-      success: false,
-      message: `Jumlah kamar harus sesuai dengan nomor kamar yang diinputkan`,
-    });
-  }
 
   for (let i = 0; i < nomor_kamar_arr.length; i++) {
     const kamar = await sequelize.query(
@@ -63,10 +54,9 @@ exports.addPemesanan = async (request, response) => {
         message: `nomor kamar ${nomor_kamar_arr[i]} yang anda inputkan tidak ada`,
       });
     }
-    console.log(kamar[(0)[0]]);
 
     let roomCheck = await sequelize.query(
-      `SELECT * FROM detail_pemesanans WHERE id_kamar = ${kamar[0][0].id} AND tgl_akses >= "${check_in}" AND tgl_akses <= "${check_out}" ;`
+      `SELECT * FROM detail_pemesanans as dp join pemesanans as p ON p.id = dp.id_pemesanan WHERE dp.id_kamar = ${kamar[0][0].id} AND dp.tgl_akses >= "${check_in}" AND dp.tgl_akses <= "${check_out}" and p.status_pemesanan != 'checkout' ;`
     );
 
     if (roomCheck[0].length > 0) {
@@ -168,7 +158,6 @@ exports.updatePemesanan = async (request, response) => {
   const {
     nama_user,
     nomor_kamar,
-    jumlah_kamar,
     nama_pemesanan,
     check_in,
     check_out,
@@ -189,23 +178,19 @@ exports.updatePemesanan = async (request, response) => {
     });
   }
 
-  let nomor_kamar_arr = nomor_kamar.split("-");
+  let nomor_kamar_arr = nomor_kamar.split(",");
 
   let kamar_arr = [];
 
-  if (nomor_kamar_arr.length != jumlah_kamar) {
-    return response.json({
-      success: false,
-      message: `Jumlah kamar harus sesuai dengan nomor kamar yang diinputkan`,
-    });
-  }
+  jumlah_kamar = nomor_kamar_arr.length;
+  console.log(jumlah_kamar);
 
   for (let i = 0; i < nomor_kamar_arr.length; i++) {
     const kamar = await sequelize.query(
-      `SELECT kamars.id,kamars.nomor_kamar,tipe_kamars.nama_tipe_kamar, tipe_kamars.harga FROM kamars JOIN tipe_kamars ON tipe_kamars.id = kamars.id_tipe_kamar where kamars.nomor_kamar = ${nomor_kamar_arr[i]} ORDER BY kamars.id ASC `
+      `SELECT kamars.id,kamars.nomor_kamar,tipe_kamars.nama_tipe_kamar, tipe_kamars.harga FROM kamars JOIN tipe_kamars ON tipe_kamars.id = kamars.id_tipe_kamar where kamars.nomor_kamar = '${nomor_kamar_arr[i]}' ORDER BY kamars.id ASC `
     );
 
-    if (kamar[0][0] === null) {
+    if (kamar[0][0] === undefined) {
       return response.json({
         success: false,
         message: `nomor kamar ${nomor_kamar_arr[i]} yang anda inputkan tidak ada`,
@@ -213,7 +198,7 @@ exports.updatePemesanan = async (request, response) => {
     }
 
     let roomCheck = await sequelize.query(
-      `SELECT * FROM detail_pemesanans WHERE id_kamar = ${kamar[0][0].id} AND tgl_akses >= "${check_in}" AND tgl_akses <= "${check_out}" ;`
+      `SELECT * FROM detail_pemesanans as dp join pemesanans as p ON p.id = dp.id_pemesanan WHERE dp.id_kamar = ${kamar[0][0].id} AND dp.tgl_akses >= "${check_in}" AND dp.tgl_akses <= "${check_out}" and p.status_pemesanan != 'checkout' AND p.id != ${id_pemesanan} ;`
     );
 
     if (roomCheck[0].length > 0) {
@@ -328,10 +313,10 @@ exports.deletePemesanan = async (request, response) => {
 exports.getAllPemesanan = async (request, response) => {
   try {
     const result = await sequelize.query(
-      `SELECT p.id AS pemesanan_id, p.tgl_check_in, p.tgl_check_out, p.nomor_pemesanan, dp.harga, p.nama_pemesanan, dp.id_kamar, k.nomor_kamar, tk.nama_tipe_kamar, u.nama_user FROM pemesanans AS p JOIN detail_pemesanans AS dp ON dp.id_pemesanan = p.id JOIN kamars AS k ON k.id = dp.id_kamar JOIN tipe_kamars AS tk ON tk.id = k.id_tipe_kamar JOIN users AS u ON u.id = p.id_user GROUP BY dp.id;`
+      `SELECT p.id AS pemesanan_id, DATEDIFF(p.tgl_check_out, p.tgl_check_in) AS jumlah_malam, p.jumlah_kamar, p.nama_tamu, p.tgl_check_in, p.tgl_check_out, p.nomor_pemesanan, p.status_pemesanan, sum(dp.harga) as total_harga, p.nama_pemesanan, GROUP_CONCAT(DISTINCT k.nomor_kamar) AS nomor_kamar FROM pemesanans AS p JOIN detail_pemesanans AS dp ON dp.id_pemesanan = p.id JOIN kamars AS k ON k.id = dp.id_kamar JOIN tipe_kamars AS tk ON tk.id = k.id_tipe_kamar JOIN users AS u ON u.id = p.id_user GROUP BY p.id ASC;`
     );
     const total = await sequelize.query(
-      `SELECT SUM(dp.harga) AS total_harga FROM detail_pemesanans AS dp
+      `SELECT SUM(dp.harga) AS total_pemesanan FROM detail_pemesanans AS dp
   INNER JOIN pemesanans AS p ON dp.id_pemesanan = p.id`
     );
 
@@ -354,7 +339,7 @@ exports.findByIdUser = async (request, response) => {
     let id_user = request.query.id_user;
 
     const result = await sequelize.query(
-      `SELECT p.id AS pemesanan_id, p.nomor_pemesanan, dp.harga, p.nama_pemesanan, dp.id_kamar, k.nomor_kamar, tk.nama_tipe_kamar, u.nama_user, dp.harga AS total_harga FROM pemesanans AS p JOIN detail_pemesanans AS dp ON dp.id_pemesanan = p.id JOIN kamars AS k ON k.id = dp.id_kamar JOIN tipe_kamars AS tk ON tk.id = k.id_tipe_kamar JOIN users AS u ON u.id = p.id_user WHERE p.id_user = ${id_user} GROUP BY dp.id;`
+      `SELECT p.id AS pemesanan_id, DATEDIFF(p.tgl_check_out, p.tgl_check_in) AS jumlah_malam, p.tgl_check_in, p.tgl_check_out, p.nomor_pemesanan, p.status_pemesanan, sum(dp.harga) as total_harga, p.nama_pemesanan, GROUP_CONCAT(DISTINCT k.nomor_kamar) AS nomor_kamar FROM pemesanans AS p JOIN detail_pemesanans AS dp ON dp.id_pemesanan = p.id JOIN kamars AS k ON k.id = dp.id_kamar JOIN tipe_kamars AS tk ON tk.id = k.id_tipe_kamar JOIN users AS u ON u.id = p.id_user where u.id = '${id_user}' GROUP BY p.id ASC;`
     );
 
     const total =

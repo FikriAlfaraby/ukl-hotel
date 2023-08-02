@@ -11,7 +11,6 @@ const fs = require(`fs`);
 const upload = require(`./upload_foto_tipe`).single(`foto`);
 
 const bodyParser = require("body-parser");
-const { where } = require("sequelize");
 // const upload2 = require("./upload-data-member");
 // const uploada = require("./upload-data-member");
 app.use(bodyParser.json());
@@ -51,7 +50,7 @@ exports.addType = (request, response) => {
     }
 
     if (!request.file) {
-      return response.json({ message: `Nothing to upload` });
+      return response.json({ success: false, message: `Nothing to upload` });
     }
     const finalImageURL =
       request.protocol +
@@ -103,7 +102,6 @@ exports.addType = (request, response) => {
 exports.updateType = (request, response) => {
   upload(request, response, async (error) => {
     const id = request.params.id;
-
     if (error) {
       return response.json({ message: error });
     }
