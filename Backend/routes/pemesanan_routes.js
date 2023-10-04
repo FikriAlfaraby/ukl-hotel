@@ -16,6 +16,7 @@ const auth = require(`../auth/auth`);
 
 app.get("/", auth.authVerify, pemesananController.getAllPemesanan);
 app.get("/find", auth.authVerify, pemesananController.findByIdUser);
+app.get("/query", auth.authVerify, pemesananController.findQuery);
 app.get("/:id", auth.authVerify, pemesananController.findById);
 app.post("/", auth.authVerify, pemesananController.addPemesanan);
 app.delete("/:id", auth.authVerify, pemesananController.deletePemesanan);

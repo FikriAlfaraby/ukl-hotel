@@ -43,6 +43,8 @@ exports.addPemesanan = async (request, response) => {
 
   let kamar_arr = [];
 
+  console.log(nomor_kamar_arr);
+
   for (let i = 0; i < nomor_kamar_arr.length; i++) {
     const kamar = await sequelize.query(
       `SELECT kamars.id,kamars.nomor_kamar,tipe_kamars.nama_tipe_kamar, tipe_kamars.harga FROM kamars JOIN tipe_kamars ON tipe_kamars.id = kamars.id_tipe_kamar where kamars.nomor_kamar = ${nomor_kamar_arr[i]} ORDER BY kamars.id ASC `
@@ -360,6 +362,15 @@ exports.findByIdUser = async (request, response) => {
       message: `Internal server error: ${error.message}`,
     });
   }
+};
+
+exports.findQuery = async (requset, response) => {
+  const query = requset.query.query;
+  const result = await sequelize.query(
+    `SELECT p.id AS pemesanan_id, DATEDIFF(p.tgl_check_out, p.tgl_check_in) AS jumlah_malam, p.tgl_check_in, p.tgl_check_out, p.nomor_pemesanan, p.status_pemesanan, sum(dp.harga) as total_harga, p.nama_pemesanan, GROUP_CONCAT(DISTINCT k.nomor_kamar) AS nomor_kamar FROM pemesanans AS p JOIN detail_pemesanans AS dp ON dp.id_pemesanan = p.id JOIN kamars AS k ON k.id = dp.id_kamar JOIN tipe_kamars AS tk ON tk.id = k.id_tipe_kamar JOIN users AS u ON u.id = p.id_user WHERE p.nama_tamu LIKE '%${query}%' OR p.tgl_check_in = '${query}' GROUP BY p.id ASC;`
+  );
+
+  return response.json({ result });
 };
 
 exports.findById = async (request, response) => {

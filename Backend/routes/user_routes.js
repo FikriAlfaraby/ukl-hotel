@@ -10,6 +10,7 @@ const userController = require("../controller/user_controller");
 const auth = require(`../auth/auth`);
 
 app.post("/login", userController.login);
+app.post("/login/customer", userController.loginCustomer);
 app.get("/getAll", auth.authVerify, userController.getAllUser);
 app.get("/", auth.authVerify, userController.getUserLogin);
 app.get("/:id", auth.authVerify, userController.findUser);
